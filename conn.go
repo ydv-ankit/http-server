@@ -18,7 +18,7 @@ type Response struct {
 	PROTOCOL string
 	STATUS   int
 	HEADERS  map[string]string
-	BODY     string
+	BODY     []byte
 }
 
 type ClientConnection struct {
@@ -46,10 +46,8 @@ func handleConnection(c net.Conn) {
 	}
 	err = conn.parseRequest(data[:n])
 	if err != nil {
-		WriteTextResponse(&conn.Conn, "HTTP/1.1", 400, "")
+		fmt.Println(err)
 		return
 	}
-	conn.showRequest()
-	response := handleRequest(conn.Request.URI)
-	WriteTextResponse(&conn.Conn, "HTTP/1.1", 200, response)
+	conn.handleRequest()
 }

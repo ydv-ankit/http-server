@@ -7,21 +7,26 @@ import (
 
 func splitRequest(data []byte) (string, string, string) {
 	request := string(data)
-	if len(strings.Split(request, "\r\n")) > 1 {
-		startLine := strings.Split(request, "\r\n")[0]
-		if len(strings.Split(request[len(startLine):], "\r\n\r\n")) == 1 {
-			headers := strings.Split(request[len(startLine):], "\r\n\r\n")[0]
-			return startLine, headers, ""
-		}
-		if len(strings.Split(request[len(startLine):], "\r\n\r\n")) >= 2 {
-			headers := strings.Split(request[len(startLine):], "\r\n\r\n")[0]
-			body := strings.Split(request[len(startLine):], "\r\n\r\n")[1]
-			return startLine, headers, body
-		}
-		return startLine, "", ""
-	} else {
+
+	// Find the double CRLF that separates headers and body
+	separatorIndex := strings.Index(request, "\r\n\r\n")
+
+	// Split request into start line, headers, and body
+	lines := strings.Split(request[:separatorIndex], "\r\n")
+	if len(lines) == 0 {
 		return "", "", ""
 	}
+
+	startLine := lines[0]
+	headers := strings.Join(lines[1:], "\r\n")
+
+	// If no headers or body, return empty
+	if separatorIndex == -1 {
+		return startLine, headers, ""
+	}
+	body := request[separatorIndex+4:] // Skip "\r\n\r\n"
+
+	return startLine, headers, body
 }
 
 func (c *ClientConnection) parseHeaders(headers string) {
@@ -34,13 +39,17 @@ func (c *ClientConnection) parseHeaders(headers string) {
 	}
 }
 
-func (c *ClientConnection) parseStartLine(startLine string) {
+func (c *ClientConnection) parseStartLine(startLine string) error {
 	parts := strings.Split(startLine, " ")
 	if len(parts) == 3 {
 		c.Request.METHOD = parts[0]
 		c.Request.PATH = parts[1]
 		c.Request.VERSION = parts[2]
+	} else {
+		fmt.Println("Invalid start line")
+		return fmt.Errorf("invalid start line")
 	}
+	return nil
 }
 
 func (c *ClientConnection) parseRequest(data []byte) error {
@@ -48,7 +57,10 @@ func (c *ClientConnection) parseRequest(data []byte) error {
 	if startLine == "" {
 		return fmt.Errorf("empty request")
 	}
-	c.parseStartLine(startLine)
+	err := c.parseStartLine(startLine)
+	if err != nil {
+		return err
+	}
 	c.parseHeaders(headers)
 	c.Request.BODY = body
 	return nil

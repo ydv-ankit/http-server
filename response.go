@@ -1,7 +1,6 @@
 package main
 
 import (
-	"net"
 	"strconv"
 )
 
@@ -30,11 +29,11 @@ func createHeader(key string, value string) string {
 	return key + ": " + value + "\r\n"
 }
 
-func WriteTextResponse(c *net.Conn, protocol string, status int, body string) {
-	response := protocol + " " + strconv.Itoa(status) + " " + statusText[status] + "\r\n"
-	response += createHeader("Content-Type", "text/plain")
-	response += createHeader("Content-Length", strconv.Itoa(len(body)))
-	response += "\r\n"
-	response += body
-	(*c).Write([]byte(response))
+func (c *ClientConnection) WriteTextResponse() {
+	response := c.Response.PROTOCOL + " " + strconv.Itoa(c.Response.STATUS) + " " + statusText[c.Response.STATUS] + "\r\n"
+	for key, value := range c.Response.HEADERS {
+		response += createHeader(key, value)
+	}
+	response += "\r\n" + string(c.Response.BODY)
+	c.Conn.Write([]byte(response))
 }
