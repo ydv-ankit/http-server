@@ -5,16 +5,32 @@ import (
 	"net"
 )
 
+type Request struct {
+	METHOD  string
+	URI     string
+	VERSION string
+	HEADERS map[string]string
+	PATH    string
+	BODY    string
+}
+
+type Response struct {
+	PROTOCOL string
+	STATUS   int
+	HEADERS  map[string]string
+	BODY     string
+}
+
 type ClientConnection struct {
 	Conn     net.Conn
-	Request  map[string]string
-	Response map[string]string
+	Request  Request
+	Response Response
 }
 
 func createConnection(c net.Conn) *ClientConnection {
 	return &ClientConnection{
-		Request:  make(map[string]string),
-		Response: make(map[string]string),
+		Request:  Request{},
+		Response: Response{},
 		Conn:     c,
 	}
 }
@@ -33,6 +49,7 @@ func handleConnection(c net.Conn) {
 		WriteTextResponse(&conn.Conn, "HTTP/1.1", 400, "")
 		return
 	}
-	response := handleRequest(conn.Request["uri"])
+	conn.showRequest()
+	response := handleRequest(conn.Request.URI)
 	WriteTextResponse(&conn.Conn, "HTTP/1.1", 200, response)
 }
