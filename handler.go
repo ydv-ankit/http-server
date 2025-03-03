@@ -46,9 +46,8 @@ func (c *ClientConnection) handleRequest() {
 			PROTOCOL: "HTTP/1.1",
 			HEADERS: map[string]string{
 				"Content-Type":   "text/plain",
-				"Content-Length": strconv.Itoa(len("404 Not Found")),
+				"Content-Length": "0",
 			},
-			BODY: []byte("404 Not Found"),
 		}
 		c.WriteTextResponse()
 		return
