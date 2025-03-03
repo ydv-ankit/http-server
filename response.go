@@ -26,10 +26,14 @@ var statusText = map[int]string{
 	503: "Service Unavailable",
 }
 
-func WriteResponse(c *net.Conn, status int, body string) {
-	response := "HTTP/1.1 " + strconv.Itoa(status) + " " + statusText[status] + "\r\n"
-	response += "Content-Type: text/html\r\n"
-	response += "Content-Length: " + strconv.Itoa(len(body)) + "\r\n"
+func createHeader(key string, value string) string {
+	return key + ": " + value + "\r\n"
+}
+
+func WriteTextResponse(c *net.Conn, protocol string, status int, body string) {
+	response := protocol + " " + strconv.Itoa(status) + " " + statusText[status] + "\r\n"
+	response += createHeader("Content-Type", "text/plain")
+	response += createHeader("Content-Length", strconv.Itoa(len(body)))
 	response += "\r\n"
 	response += body
 	(*c).Write([]byte(response))
