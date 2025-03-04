@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
 	"mime"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 func readFileContent(path string) ([]byte, string, error) {
@@ -36,6 +39,9 @@ func (c *ClientConnection) handleRequest() {
 
 	// Construct the full file path
 	filePath := "./static" + c.Request.PATH
+	if c.Request.PATH == "/" {
+		filePath = "./static/index.html"
+	}
 
 	// Read file content dynamically
 	content, mimeType, err := readFileContent(filePath)
@@ -62,6 +68,25 @@ func (c *ClientConnection) handleRequest() {
 			"Content-Length": strconv.Itoa(len(content)),
 		},
 		BODY: content,
+	}
+	// Compress content with gzip if client supports it
+	// brotli
+	if strings.Contains(c.Request.HEADERS["Accept-Encoding"], "gzip") && strings.Contains(mimeType, "text/") {
+		var buffer bytes.Buffer
+		zw := gzip.NewWriter(&buffer)
+		_, err := zw.Write(content)
+		if err != nil {
+			fmt.Println("Error compressing content:", err)
+			return
+		}
+		err = zw.Close()
+		if err != nil {
+			fmt.Println("Error closing gzip writer:", err)
+			return
+		}
+		c.Response.HEADERS["Content-Encoding"] = "gzip"
+		c.Response.BODY = buffer.Bytes()
+		c.Response.HEADERS["Content-Length"] = strconv.Itoa(len(c.Response.BODY))
 	}
 	c.WriteTextResponse()
 }
