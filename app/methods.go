@@ -100,3 +100,21 @@ func sayHello(c *ClientConnection, params map[string]string) {
 	}
 	c.WriteTextResponse()
 }
+
+func checkAuth(c *ClientConnection, params map[string]string) {
+	fmt.Println("params", params)
+	if params["name"] != "ankit" {
+		c.Response = Response{
+			PROTOCOL: c.Request.VERSION,
+			STATUS:   401,
+			HEADERS: map[string]string{
+				"Content-Type":   "text/plain",
+				"Content-Length": "12",
+			},
+			BODY: []byte("UNAUTHORISED"),
+		}
+		c.WriteTextResponse()
+		c.Conn.Close()
+		return
+	}
+}
