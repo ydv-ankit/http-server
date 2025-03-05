@@ -13,7 +13,7 @@ import (
 
 type Trie struct {
 	Children     map[string]*Trie
-	Handlers     map[string]func(*ClientConnection)
+	Handlers     map[string]func(*ClientConnection, map[string]string)
 	IsDynamic    bool
 	DynamicParam string
 }
@@ -21,7 +21,7 @@ type Trie struct {
 func NewTrie() *Trie {
 	return &Trie{
 		Children:     make(map[string]*Trie),
-		Handlers:     make(map[string]func(*ClientConnection)),
+		Handlers:     make(map[string]func(*ClientConnection, map[string]string)),
 		IsDynamic:    false,
 		DynamicParam: "",
 	}
@@ -29,7 +29,7 @@ func NewTrie() *Trie {
 
 var router = NewTrie()
 
-func (t *Trie) AddRoute(method, path string, handler func(*ClientConnection)) {
+func (t *Trie) AddRoute(method, path string, handler func(*ClientConnection, map[string]string)) {
 	// check if path == "/"
 	node := t
 	if path == "/" {
@@ -60,7 +60,7 @@ func (t *Trie) AddRoute(method, path string, handler func(*ClientConnection)) {
 	node.Handlers[method] = handler
 }
 
-func (t *Trie) FindRoute(path string, method string) (func(*ClientConnection), map[string]string, error) {
+func (t *Trie) FindRoute(path string, method string) (func(*ClientConnection, map[string]string), map[string]string, error) {
 	node := t
 	parts := strings.Split(path, "/")
 	params := make(map[string]string)
@@ -96,17 +96,14 @@ func (t *Trie) FindRoute(path string, method string) (func(*ClientConnection), m
 }
 
 func (t *Trie) getRoutes() {
-	for {
-		if len(t.Children) == 0 {
-			break
-		}
-		for key := range t.Children {
-			fmt.Println("route: ", key)
-			fmt.Println("params: ", t.Children[key].DynamicParam)
-			fmt.Println("handlers: ", t.Children[key].Handlers)
-			t.Children[key].getRoutes()
-		}
-		break
+	if len(t.Children) == 0 {
+		return
+	}
+	for key := range t.Children {
+		fmt.Println("route: ", key)
+		fmt.Println("params: ", t.Children[key].DynamicParam)
+		fmt.Println("handlers: ", t.Children[key].Handlers)
+		t.Children[key].getRoutes()
 	}
 }
 
@@ -133,43 +130,15 @@ func readFileContent(path string) ([]byte, string, error) {
 	return content, mimeType, nil
 }
 
-func sayHello(c *ClientConnection) {
-	fmt.Println("hello there")
-}
-
-func (c *ClientConnection) handleRequest() {
-	router.AddRoute("GET", "/user/:name", sayHello)
-	router.getRoutes()
-	fmt.Println("Requested Path:", c.Request.PATH)
-
-	handler, params, err := router.FindRoute(c.Request.PATH, c.Request.METHOD)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	if handler != nil {
-		fmt.Println("params", params)
-	}
-	fmt.Println("no handler attached")
-	c.Response = Response{
-		STATUS:   400,
-		PROTOCOL: "HTTP/1.1",
-		HEADERS: map[string]string{
-			"Content-Type":   "text/plain",
-			"Content-Length": "0",
-		},
-	}
-	c.WriteTextResponse()
-
+func serveStaticFiles(c *ClientConnection, params map[string]string) {
 	// Construct the full file path
-	filePath := "./static" + c.Request.PATH
-	if c.Request.PATH == "/" {
-		filePath = "./static/index.html"
-	}
+	filePath := "./static/" + params["filename"]
 
+	fmt.Println("got filepath", filePath)
 	// Read file content dynamically
 	content, mimeType, err := readFileContent(filePath)
 	if err != nil {
+		fmt.Println(err)
 		// File not found → Return 404
 		c.Response = Response{
 			STATUS:   404,
@@ -211,6 +180,47 @@ func (c *ClientConnection) handleRequest() {
 		c.Response.HEADERS["Content-Encoding"] = "gzip"
 		c.Response.BODY = buffer.Bytes()
 		c.Response.HEADERS["Content-Length"] = strconv.Itoa(len(c.Response.BODY))
+	}
+	c.WriteTextResponse()
+}
+
+func sayHello(c *ClientConnection, params map[string]string) {
+	c.Response = Response{
+		PROTOCOL: "http/1.1",
+		STATUS:   200,
+		HEADERS: map[string]string{
+			"Content-Type":   "text/plain",
+			"Content-Length": "5",
+		},
+		BODY: []byte("Hello"),
+	}
+	c.WriteTextResponse()
+}
+
+func (c *ClientConnection) handleRequest() {
+	router.AddRoute("GET", "/files/:filename", serveStaticFiles)
+	router.AddRoute("GET", "/hello", sayHello)
+	fmt.Println("Requested Path:", c.Request.PATH)
+
+	handler, params, err := router.FindRoute(c.Request.PATH, c.Request.METHOD)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	if handler != nil {
+		fmt.Println("params", params)
+		fmt.Println("calling handler")
+		handler(c, params)
+		return
+	}
+	fmt.Println("no handler attached")
+	c.Response = Response{
+		STATUS:   400,
+		PROTOCOL: "HTTP/1.1",
+		HEADERS: map[string]string{
+			"Content-Type":   "text/plain",
+			"Content-Length": "0",
+		},
 	}
 	c.WriteTextResponse()
 }

@@ -30,10 +30,13 @@ func createHeader(key string, value string) string {
 }
 
 func (c *ClientConnection) WriteTextResponse() {
+	// start line
 	response := c.Response.PROTOCOL + " " + strconv.Itoa(c.Response.STATUS) + " " + statusText[c.Response.STATUS] + "\r\n"
+	// headers
 	for key, value := range c.Response.HEADERS {
 		response += createHeader(key, value)
 	}
+	// body
 	response += "\r\n" + string(c.Response.BODY)
 	c.Conn.Write([]byte(response))
 }
