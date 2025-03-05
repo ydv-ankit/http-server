@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	"syscall"
 )
 
-func startServer() {
+func StartServer() {
 	conn, err := net.Listen("tcp", "0.0.0.0:4444")
 	if err != nil {
 		fmt.Println(err)

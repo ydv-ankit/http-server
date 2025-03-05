@@ -1,5 +1,7 @@
 package main
 
+import "github.com/ydv-ankit/http-server/app"
+
 func main() {
-	startServer()
+	app.StartServer()
 }
