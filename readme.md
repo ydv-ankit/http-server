@@ -2,6 +2,7 @@
 
 - handle concurrent client connections
 - gracefully close server connection (waits for clients to process)
+- dynamically handle routes
 - gzip compression
 - request parser
 - response structure
