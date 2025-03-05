@@ -102,7 +102,7 @@ func (c *ClientConnection) handleRequest() {
 		fmt.Println(err)
 		return
 	}
-	if handlers != nil || len(handlers) == 0 {
+	if handlers != nil || len(handlers) > 0 {
 		fmt.Println("params", params)
 		fmt.Println("calling handlers", handlers)
 		for _, handler := range handlers {
